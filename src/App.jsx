@@ -1,27 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
-const API_URL = 'https://crypto-cards-mini-app.vercel.app';
+const API_URL = 'https://crypto-cards-mini-app.vercel.app/';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState('Apex User');
+  const [userName, setUserName] = useState('Usuario');
   const [telegramId, setTelegramId] = useState('123456789');
   
   const [userData, setUserData] = useState({
-    cards: [
-      { id: 1, type: 'VISA', number: '•••• 7024', balance: 12460.75, expiry: '04/26', status: 'Activa', gradient: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)' },
-      { id: 2, type: 'MASTERCARD', number: '•••• 8821', balance: 420.00, expiry: '12/27', status: 'Activa', gradient: 'linear-gradient(135deg, #7f1d1d 0%, #0f172a 100%)' }
-    ],
-    history: [
-      { id: 1, title: 'Depósito Cripto', description: 'USDT • TRC20', amount: '+$5,000', date: 'Justo ahora' },
-      { id: 2, title: 'Compra Online', description: 'Amazon', amount: '-$149.50', date: 'Ayer' },
-      { id: 3, title: 'Intercambio Cripto', description: 'BTC a USD', amount: '+$1.2 BTC', date: 'Hace 3 días' }
-    ]
+    cards: [],
+    history: []
   });
 
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(''); // 'deposit', 'send', 'exchange', 'issue', 'card-details'
+  const [modalType, setModalType] = useState('');
   const [selectedCard, setSelectedCard] = useState(null);
   const [amount, setAmount] = useState('');
   const [selectedCrypto, setSelectedCrypto] = useState('USDT (TRC20)');
@@ -32,16 +25,20 @@ export default function App() {
 
   useEffect(() => {
     let tId = '123456789';
+    let uName = 'Usuario';
+
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.expand();
       const user = tg.initDataUnsafe?.user;
       if (user) {
-        setUserName(user.first_name || 'Apex User');
-        tId = user.id;
-        setTelegramId(user.id);
+        uName = user.first_name || user.username || 'Usuario';
+        tId = user.id.toString();
       }
     }
+
+    setUserName(uName);
+    setTelegramId(tId);
     fetchUserData(tId);
   }, []);
 
@@ -57,7 +54,7 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.log("Usando datos locales por defecto.");
+      console.log("Error al sincronizar con el servidor.");
     } finally {
       setLoading(false);
     }
@@ -85,7 +82,7 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             telegramId,
-            cardId: selectedCard ? selectedCard.id : 1,
+            cardId: selectedCard ? selectedCard.id : userData.cards[0]?.id,
             amount,
             crypto: selectedCrypto
           })
@@ -130,7 +127,7 @@ export default function App() {
         alert("Error al verificar PIN de seguridad.");
       }
     } else {
-      alert(`Acción "${modalType}" simulada correctamente.`);
+      alert(`Acción "${modalType}" procesada.`);
       setShowModal(false);
     }
   };
@@ -166,7 +163,7 @@ export default function App() {
       <div style={{ backgroundColor: '#05070a', color: '#eab308', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, sans-serif' }}>
         <div style={{ fontSize: '32px', marginBottom: '12px' }}>👑</div>
         <p style={{ fontSize: '14px', fontWeight: '600', letterSpacing: '1px' }}>Apex Finance</p>
-        <p style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>Cargando entorno seguro...</p>
+        <p style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>Sincronizando cuenta de Telegram...</p>
       </div>
     );
   }
@@ -174,7 +171,7 @@ export default function App() {
   return (
     <div style={{ backgroundColor: '#05070a', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0', margin: '0', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       
-      {/* Contenedor Principal Estilo Dispositivo Móvil (iOS / Android App Shell) */}
+      {/* Contenedor Principal Estilo Dispositivo Móvil */}
       <div style={{ backgroundColor: '#090b0e', color: '#f8fafc', width: '100%', maxWidth: '414px', height: '100vh', maxHeight: '892px', border: '1px solid #1f2937', borderRadius: '36px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)', overflowY: 'auto', position: 'relative', boxSizing: 'border-box', padding: '20px 16px 90px 16px', scrollbarWidth: 'none' }}>
         
         {/* Header Superior */}
@@ -188,39 +185,47 @@ export default function App() {
           </div>
         </div>
 
-        {/* Saludo y Verificación */}
+        {/* Saludo y Verificación Dinámica */}
         <div style={{ marginBottom: '20px' }}>
           <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 6px 0', color: '#ffffff' }}>Hola, {userName}</h1>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.3)', padding: '5px 12px', borderRadius: '20px' }}>
             <span style={{ fontSize: '11px' }}>🛡️</span>
-            <span style={{ fontSize: '11px', color: '#eab308', fontWeight: '700' }}>Verificado por Apex Finance</span>
+            <span style={{ fontSize: '11px', color: '#eab308', fontWeight: '700' }}>ID: {telegramId}</span>
           </div>
         </div>
 
         {/* VISTA DASHBOARD */}
         {activeTab === 'dashboard' && (
           <>
-            {/* Tarjetas Carrusel Estilo Lujo */}
-            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '10px', scrollbarWidth: 'none', marginBottom: '20px' }}>
-              {userData.cards.map((card, idx) => (
-                <div key={card.id || idx} style={{ minWidth: '280px', background: card.gradient || 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(234, 179, 8, 0.3)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.6)', boxSizing: 'border-box', flexShrink: 0, position: 'relative' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                    <span style={{ fontWeight: '900', fontStyle: 'italic', fontSize: '14px', color: '#fff', letterSpacing: '1px' }}>APEX</span>
-                    <span style={{ fontWeight: '800', fontSize: '13px', color: '#fff', fontStyle: 'italic' }}>{card.type}</span>
-                  </div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', margin: '0 0 2px 0' }}>Saldo Disponible</p>
-                    <h3 style={{ fontSize: '24px', fontWeight: '800', margin: 0, color: '#ffffff' }}>${Number(card.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} <span style={{ fontSize: '12px', color: '#eab308' }}>USD</span></h3>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            {/* Tarjetas Carrusel Dinámicas */}
+            {userData.cards.length === 0 ? (
+              <div style={{ backgroundColor: '#131720', border: '1px dashed #334155', borderRadius: '20px', padding: '24px', textAlign: 'center', marginBottom: '20px' }}>
+                <p style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>No tienes tarjetas activas</p>
+                <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '16px' }}>Emite tu primera tarjeta virtual Visa o Mastercard para empezar a operar.</p>
+                <button onClick={() => handleOpenAction('issue')} style={{ backgroundColor: '#eab308', color: '#000', border: 'none', padding: '10px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}>
+                  Emitir Tarjeta Ahora 💳
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '10px', scrollbarWidth: 'none', marginBottom: '20px' }}>
+                {userData.cards.map((card, idx) => (
+                  <div key={card.id || idx} style={{ minWidth: '280px', background: card.gradient || 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)', borderRadius: '20px', padding: '20px', border: '1px solid rgba(234, 179, 8, 0.3)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.6)', boxSizing: 'border-box', flexShrink: 0, position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                      <span style={{ fontWeight: '900', fontStyle: 'italic', fontSize: '14px', color: '#fff', letterSpacing: '1px' }}>APEX</span>
+                      <span style={{ fontWeight: '800', fontSize: '13px', color: '#fff', fontStyle: 'italic' }}>{card.type}</span>
+                    </div>
+                    <div style={{ marginBottom: '16px' }}>
+                      <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', margin: '0 0 2px 0' }}>Saldo Disponible</p>
+                      <h3 style={{ fontSize: '24px', fontWeight: '800', margin: 0, color: '#ffffff' }}>${Number(card.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} <span style={{ fontSize: '12px', color: '#eab308' }}>USD</span></h3>
+                    </div>
                     <div>
                       <p style={{ fontSize: '11px', fontFamily: 'monospace', color: '#cbd5e1', margin: '0 0 2px 0', letterSpacing: '1px' }}>{card.card_number || card.number}</p>
                       <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>Exp: {card.expiry} • TITULAR</p>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* 4 Botones de Acción Rápida */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '24px' }}>
@@ -246,24 +251,27 @@ export default function App() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <h2 style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Transacciones Recientes</h2>
-                <span style={{ fontSize: '11px', color: '#eab308', cursor: 'pointer', fontWeight: '600' }}>Ver todo</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {userData.history.map(item => (
-                  <div key={item.id} style={{ background: '#131720', border: '1px solid #1f2937', padding: '14px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '34px', height: '34px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', fontSize: '13px', fontWeight: 'bold' }}>
-                        {item.title.includes('Depósito') ? '₮' : '⚡'}
+                {userData.history.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', padding: '20px 0' }}>No hay transacciones registradas.</p>
+                ) : (
+                  userData.history.map(item => (
+                    <div key={item.id} style={{ background: '#131720', border: '1px solid #1f2937', padding: '14px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '34px', height: '34px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', fontSize: '13px', fontWeight: 'bold' }}>
+                          {item.title.includes('Depósito') ? '₮' : '⚡'}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: '12px', fontWeight: '700', margin: '0 0 2px 0', color: '#f3f4f6' }}>{item.title}</p>
+                          <p style={{ fontSize: '10px', color: '#9ca3af', margin: 0 }}>{item.description} • {item.date}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p style={{ fontSize: '12px', fontWeight: '700', margin: '0 0 2px 0', color: '#f3f4f6' }}>{item.title}</p>
-                        <p style={{ fontSize: '10px', color: '#9ca3af', margin: 0 }}>{item.description} • {item.date}</p>
-                      </div>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: item.amount.startsWith('+') ? '#34d399' : '#f87171' }}>{item.amount}</span>
                     </div>
-                    <span style={{ fontSize: '12px', fontWeight: '700', color: item.amount.startsWith('+') ? '#34d399' : '#f87171' }}>{item.amount}</span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </>
@@ -272,24 +280,32 @@ export default function App() {
         {/* VISTA CARDS */}
         {activeTab === 'cards' && (
           <div>
-            <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#fff' }}>Gestión de Tarjetas</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {userData.cards.map(card => (
-                <div key={card.id} style={{ background: card.gradient, borderRadius: '20px', padding: '20px', border: '1px solid rgba(255,255,255,0.15)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
-                    <span style={{ fontWeight: '800', fontStyle: 'italic', color: '#fff' }}>{card.type}</span>
-                    <span style={{ fontSize: '10px', background: 'rgba(16,185,129,0.2)', color: '#34d399', padding: '3px 10px', borderRadius: '10px', fontWeight: '700' }}>{card.status}</span>
-                  </div>
-                  <h3 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 10px 0', color: '#fff' }}>${Number(card.balance).toFixed(2)} USD</h3>
-                  <p style={{ fontSize: '13px', fontFamily: 'monospace', margin: '0 0 12px 0', color: '#cbd5e1', letterSpacing: '1.5px' }}>{card.card_number || card.number}</p>
-                  
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => handleOpenAction('deposit', card)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flex: 1 }}>Recargar</button>
-                    <button onClick={() => handleOpenAction('card-details', card)} style={{ background: '#eab308', border: 'none', color: '#000', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', flex: 1 }}>Ver Datos 🔒</button>
-                  </div>
-                </div>
-              ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#fff', margin: 0 }}>Mis Tarjetas</h2>
+              <button onClick={() => handleOpenAction('issue')} style={{ backgroundColor: '#eab308', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: '800', cursor: 'pointer' }}>+ Emitir</button>
             </div>
+            
+            {userData.cards.length === 0 ? (
+              <p style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', padding: '30px 0' }}>No cuentas con tarjetas emitidas.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {userData.cards.map(card => (
+                  <div key={card.id} style={{ background: card.gradient, borderRadius: '20px', padding: '20px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <span style={{ fontWeight: '800', fontStyle: 'italic', color: '#fff' }}>{card.type}</span>
+                      <span style={{ fontSize: '10px', background: 'rgba(16,185,129,0.2)', color: '#34d399', padding: '3px 10px', borderRadius: '10px', fontWeight: '700' }}>{card.status}</span>
+                    </div>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 10px 0', color: '#fff' }}>${Number(card.balance).toFixed(2)} USD</h3>
+                    <p style={{ fontSize: '13px', fontFamily: 'monospace', margin: '0 0 12px 0', color: '#cbd5e1', letterSpacing: '1.5px' }}>{card.card_number || card.number}</p>
+                    
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleOpenAction('deposit', card)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flex: 1 }}>Recargar</button>
+                      <button onClick={() => handleOpenAction('card-details', card)} style={{ background: '#eab308', border: 'none', color: '#000', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', flex: 1 }}>Ver Datos 🔒</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -298,7 +314,7 @@ export default function App() {
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: '36px', marginBottom: '10px' }}>🌐</div>
             <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '6px', color: '#fff' }}>Redes Cripto Disponibles</h3>
-            <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '20px' }}>Conexión activa con pasarelas blockchain instantáneas.</p>
+            <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '20px' }}>Pasarelas de recarga instantánea sincronizadas con blockchain.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ background: '#131720', border: '1px solid #1f2937', padding: '14px', borderRadius: '14px', textAlign: 'left', fontSize: '12px', color: '#fff' }}>🟢 USDT (TRC20) - Rápido y sin comisiones</div>
               <div style={{ background: '#131720', border: '1px solid #1f2937', padding: '14px', borderRadius: '14px', textAlign: 'left', fontSize: '12px', color: '#fff' }}>🔵 TON (The Open Network) - Nativo Telegram</div>
@@ -313,8 +329,9 @@ export default function App() {
             <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#fff' }}>Configuración</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ background: '#131720', border: '1px solid #1f2937', borderRadius: '16px', padding: '16px' }}>
-                <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 4px 0', color: '#fff' }}>Telegram ID</p>
-                <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, fontFamily: 'monospace' }}>{telegramId}</p>
+                <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 4px 0', color: '#fff' }}>Cuenta Conectada</p>
+                <p style={{ fontSize: '12px', color: '#eab308', margin: '0 0 4px 0', fontWeight: '700' }}>{userName}</p>
+                <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, fontFamily: 'monospace' }}>Telegram ID: {telegramId}</p>
               </div>
               <div style={{ background: '#131720', border: '1px solid #1f2937', borderRadius: '16px', padding: '16px' }}>
                 <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 4px 0', color: '#fff' }}>Seguridad Biométrica</p>
@@ -418,7 +435,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Barra de Navegación Inferior Flotante Dentro del Marco Móvil */}
+        {/* Barra de Navegación Inferior Flotante */}
         <nav style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#090b0e', borderTop: '1px solid #1f2937', padding: '12px 0 20px 0', display: 'flex', justifyContent: 'space-around', alignItems: 'center', borderBottomLeftRadius: '36px', borderBottomRightRadius: '36px', zIndex: 40 }}>
           <button onClick={() => setActiveTab('dashboard')} style={{ background: 'none', border: 'none', color: activeTab === 'dashboard' ? '#eab308' : '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '10px', gap: '3px', fontWeight: '700' }}>
             <span style={{ fontSize: '16px' }}>🏠</span><span>Inicio</span>
