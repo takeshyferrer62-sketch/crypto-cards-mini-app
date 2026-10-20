@@ -14,7 +14,7 @@ export default function App() {
   });
 
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
+  const [modalType, setModalType] = useState(''); // 'deposit', 'send', 'exchange', 'issue', 'card-details'
   const [selectedCard, setSelectedCard] = useState(null);
   const [amount, setAmount] = useState('');
   const [selectedCrypto, setSelectedCrypto] = useState('USDT (TRC20)');
@@ -22,6 +22,9 @@ export default function App() {
   const [activeOrder, setActiveOrder] = useState(null);
   const [pinInput, setPinInput] = useState('');
   const [secureCardData, setSecureCardData] = useState(null);
+
+  // Estados para el conversor de divisas
+  const [exchangeResult, setExchangeResult] = useState(null);
 
   useEffect(() => {
     let tId = '123456789';
@@ -66,6 +69,7 @@ export default function App() {
     setAmount('');
     setPinInput('');
     setSecureCardData(null);
+    setExchangeResult(null);
     if (card) setSelectedCard(card);
     setShowModal(true);
   };
@@ -149,6 +153,33 @@ export default function App() {
       }
     } catch (e) {
       alert("Error al confirmar.");
+    }
+  };
+
+  const handleCalculateExchange = async () => {
+    const amt = document.getElementById('exchange-amount')?.value;
+    const from = document.getElementById('exchange-from')?.value;
+    const to = document.getElementById('exchange-to')?.value;
+
+    if (!amt || amt <= 0) {
+      alert("Introduce una cantidad válida");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/exchange-rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromCurrency: from, toCurrency: to, amount: amt })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setExchangeResult(data);
+      } else {
+        alert("Error al calcular tasa");
+      }
+    } catch (e) {
+      alert("Error de conexión con el servidor de divisas");
     }
   };
 
@@ -347,11 +378,12 @@ export default function App() {
             <div style={{ backgroundColor: '#0f172a', borderTop: '1px solid #1e293b', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '24px 20px 36px 20px', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0, color: '#ffffff', textTransform: 'capitalize' }}>
-                  {modalType === 'deposit' ? 'Recargar Saldo' : modalType === 'issue' ? 'Emitir Nueva Tarjeta' : modalType === 'card-details' ? 'Seguridad y PIN' : modalType}
+                  {modalType === 'deposit' ? 'Recargar Saldo' : modalType === 'issue' ? 'Emitir Nueva Tarjeta' : modalType === 'exchange' ? 'Conversor de Divisas' : modalType === 'card-details' ? 'Seguridad y PIN' : modalType}
                 </h3>
                 <button onClick={() => setShowModal(false)} style={{ background: '#1e293b', border: 'none', color: '#94a3b8', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer' }}>✕</button>
               </div>
 
+              {/* MODAL DEPOSITAR */}
               {modalType === 'deposit' && !activeOrder && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
@@ -389,6 +421,7 @@ export default function App() {
                 </div>
               )}
 
+              {/* MODAL EMITIR TARJETA */}
               {modalType === 'issue' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
@@ -404,6 +437,55 @@ export default function App() {
                 </div>
               )}
 
+              {/* MODAL EXCHANGE / CONVERSOR DE DIVISAS */}
+              {modalType === 'exchange' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Convertir de:</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input 
+                        type="number" 
+                        placeholder="0.00" 
+                        id="exchange-amount"
+                        style={{ flex: 2, backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} 
+                      />
+                      <select id="exchange-from" style={{ flex: 1, backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
+                        <option value="USDT">USDT</option>
+                        <option value="RUB">RUB</option>
+                        <option value="TON">TON</option>
+                        <option value="BTC">BTC</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>A moneda:</label>
+                    <select id="exchange-to" style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
+                      <option value="USD">USD (Dólar)</option>
+                      <option value="EUR">EUR (Euro)</option>
+                      <option value="RUB">RUB (Rublo)</option>
+                      <option value="CUP">CUP (Peso Cubano)</option>
+                      <option value="USDT">USDT</option>
+                    </select>
+                  </div>
+
+                  {exchangeResult && (
+                    <div style={{ backgroundColor: '#090b0e', border: '1px solid #10b981', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                      <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 2px 0' }}>Resultado estimado:</p>
+                      <p style={{ fontSize: '16px', fontWeight: '800', color: '#10b981', margin: 0 }}>
+                        {exchangeResult.inputAmount} {exchangeResult.from} = {exchangeResult.result} {exchangeResult.to}
+                      </p>
+                    </div>
+                  )}
+
+                  <button onClick={handleCalculateExchange} style={{ width: '100%', backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>
+                    Calcular Tasa de Cambio ⇄
+                  </button>
+                </div>
+              )}
+
+              {/* MODAL DATOS SEGUROS DE TARJETA (PIN) */}
               {modalType === 'card-details' && !secureCardData && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Introduce tu PIN de seguridad para revelar los datos confidenciales de la tarjeta (Por defecto: 1234):</p>
