@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const API_URL = 'https://crypto-cards-mini-app.vercel.app/';
+const API_URL = 'https://crypto-cards-bot.onrender.com';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -9,11 +9,18 @@ export default function App() {
   const [telegramId, setTelegramId] = useState('123456789');
   
   const [userData, setUserData] = useState({
-    cards: [],
-    history: []
+    cards: [
+      { id: 1, type: 'VISA', number: '4314 7024 5669 9014', balance: 12460.75, expiry: '04/26', status: 'Activa', gradient: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)' },
+      { id: 2, type: 'MASTERCARD', number: '5412 8821 9934 1134', balance: 420.00, expiry: '12/27', status: 'Activa', gradient: 'linear-gradient(135deg, #7f1d1d 0%, #0f172a 100%)' }
+    ],
+    history: [
+      { id: 1, title: 'Crypto Deposit', description: 'USDT • TRC20', amount: '+$5,000', date: 'Justo ahora' },
+      { id: 2, title: 'Online Purchase', description: 'Amazon', amount: '-$149.50', date: 'Ayer' },
+      { id: 3, title: 'Crypto Exchange', description: 'BTC to USD', amount: '+$1.2 BTC', date: 'Hace 3 días' }
+    ]
   });
 
-  // Estados para modales / acciones
+  // Estados para modales y pasarela
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState(''); // 'deposit', 'send', 'exchange', 'issue'
   const [selectedCard, setSelectedCard] = useState(null);
@@ -42,14 +49,14 @@ export default function App() {
       setLoading(true);
       const res = await fetch(`${API_URL}/api/user/${tId}`);
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.user) {
         setUserData(data.user);
         if (data.user.cards && data.user.cards.length > 0) {
           setSelectedCard(data.user.cards[0]);
         }
       }
     } catch (e) {
-      console.log("Error cargando datos locales/remotos");
+      console.log("Usando datos locales por defecto.");
     } finally {
       setLoading(false);
     }
@@ -153,10 +160,8 @@ export default function App() {
           <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: '#000', fontSize: '14px' }}>A</div>
           <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', letterSpacing: '0.5px' }}>Apex Finance</span>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <div style={{ background: '#131720', border: '1px solid rgba(234, 179, 8, 0.2)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <span style={{ fontSize: '14px' }}>🔔</span>
-          </div>
+        <div style={{ background: '#131720', border: '1px solid rgba(234, 179, 8, 0.2)', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <span style={{ fontSize: '14px' }}>🔔</span>
         </div>
       </div>
 
@@ -169,7 +174,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* CONTENIDO SEGÚN PESTAÑA */}
+      {/* VISTA DASHBOARD */}
       {activeTab === 'dashboard' && (
         <>
           {/* Tarjetas Carrusel Estilo Lujo */}
@@ -245,6 +250,7 @@ export default function App() {
         </>
       )}
 
+      {/* VISTA CARDS */}
       {activeTab === 'cards' && (
         <div>
           <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '14px' }}>Gestión de Tarjetas</h2>
@@ -264,6 +270,7 @@ export default function App() {
         </div>
       )}
 
+      {/* VISTA CRYPTO */}
       {activeTab === 'crypto' && (
         <div style={{ textAlign: 'center', padding: '30px 10px' }}>
           <div style={{ fontSize: '36px', marginBottom: '10px' }}>🌐</div>
@@ -275,6 +282,7 @@ export default function App() {
         </div>
       )}
 
+      {/* VISTA SETTINGS */}
       {activeTab === 'settings' && (
         <div>
           <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '14px' }}>Configuración</h2>
@@ -289,7 +297,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL INTERACTIVO PARA LAS ACCIONES */}
+      {/* MODAL INTERACTIVO */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}>
           <div style={{ backgroundColor: '#0f172a', borderTop: '1px solid #1e293b', width: '100%', maxWidth: '410px', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '24px 20px 32px 20px', boxSizing: 'border-box' }}>
