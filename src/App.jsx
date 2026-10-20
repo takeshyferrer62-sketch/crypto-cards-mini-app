@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const API_URL = 'https://crypto-cards-backend-f9y7.onrender.com';
+const API_URL = 'https://crypto-cards-bot.onrender.com';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
