@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const API_URL = 'https://crypto-cards-mini-app-one.vercel.app';
+const API_URL = 'https://crypto-cards-mini-app-1.vercel.app';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
