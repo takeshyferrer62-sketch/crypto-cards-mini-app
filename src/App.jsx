@@ -27,17 +27,32 @@ export default function App() {
   const [exchangeResult, setExchangeResult] = useState(null);
 
   useEffect(() => {
-    let tId = '123456789';
-    let uName = 'Usuario';
+    let tId = '';
+    let uName = '';
 
+    // Verificar si se está ejecutando dentro de Telegram WebApp real
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.expand();
       const user = tg.initDataUnsafe?.user;
-      if (user) {
-        uName = user.first_name || user.username || 'Usuario';
+      if (user && user.id) {
         tId = user.id.toString();
+        uName = user.first_name || user.username || 'Usuario';
       }
+    }
+
+    // Si por alguna razón entró desde un navegador web externo donde no hay sesión de Telegram,
+    // puedes opcionalmente pedirlo o asignarlo de forma única, o dejar un aviso limpio.
+    if (!tId) {
+      // Intentamos recuperar del almacenamiento local del navegador si ya lo ingresó antes,
+      // o asignamos un identificador de modo navegador web para pruebas reales separadas.
+      let savedId = localStorage.getItem('apex_web_user_id');
+      if (!savedId) {
+        savedId = 'WEB-' + Math.floor(100000 + Math.random() * 900000);
+        localStorage.setItem('apex_web_user_id', savedId);
+      }
+      tId = savedId;
+      uName = 'Usuario Web';
     }
 
     setUserName(uName);
