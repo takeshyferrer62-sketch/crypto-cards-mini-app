@@ -75,7 +75,7 @@ export default function App() {
   const handleOpenAction = (type, card = null) => {
     setModalType(type);
     setActiveOrder(null);
-    setAmount('');
+    setAmount(type === 'issue' ? 'Visa Standard' : '');
     setMerchantName('');
     setPinInput('');
     setSecureCardData(null);
@@ -134,19 +134,22 @@ export default function App() {
       }
     } else if (modalType === 'issue') {
       try {
+        const cardTypeToIssue = amount || 'Visa Standard';
         const res = await fetch(`${API_URL}/api/buy-card`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ telegramId, cardType: amount || 'Visa Standard' })
+          body: JSON.stringify({ telegramId, cardType: cardTypeToIssue })
         });
         const data = await res.json();
         if (data.success) {
           alert("¡Tarjeta emitida con éxito!");
           setShowModal(false);
           fetchUserData(telegramId);
+        } else {
+          alert(data.error || "Error al emitir tarjeta.");
         }
       } catch (e) {
-        alert("Error al emitir tarjeta.");
+        alert("Error de red al emitir tarjeta.");
       }
     } else if (modalType === 'card-details') {
       try {
@@ -439,7 +442,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* DEMÁS MODALES (Depósito, Emitir, Exchange, PIN) */}
+              {/* MODAL DEPOSITAR */}
               {modalType === 'deposit' && !activeOrder && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
@@ -467,9 +470,15 @@ export default function App() {
                 </div>
               )}
 
+              {/* MODAL EMITIR TARJETA */}
               {modalType === 'issue' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <select value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
+                  <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '-4px' }}>Tipo de Tarjeta</label>
+                  <select 
+                    value={amount || 'Visa Standard'} 
+                    onChange={(e) => setAmount(e.target.value)} 
+                    style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}
+                  >
                     <option value="Visa Standard">Visa Standard (Suscripciones/Web)</option>
                     <option value="Mastercard Black">Mastercard Black (Global)</option>
                   </select>
@@ -479,6 +488,7 @@ export default function App() {
                 </div>
               )}
 
+              {/* MODAL EXCHANGE */}
               {modalType === 'exchange' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -510,6 +520,7 @@ export default function App() {
                 </div>
               )}
 
+              {/* MODAL PIN / DATOS SEGUROS */}
               {modalType === 'card-details' && !secureCardData && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Introduce tu PIN de seguridad (Por defecto: 1234):</p>
