@@ -21,12 +21,14 @@ export default function App() {
   });
 
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
+  const [modalType, setModalType] = useState(''); // 'deposit', 'send', 'exchange', 'issue', 'card-details'
   const [selectedCard, setSelectedCard] = useState(null);
   const [amount, setAmount] = useState('');
   const [selectedCrypto, setSelectedCrypto] = useState('USDT (TRC20)');
   const [copied, setCopied] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
+  const [pinInput, setPinInput] = useState('');
+  const [secureCardData, setSecureCardData] = useState(null);
 
   useEffect(() => {
     let tId = '123456789';
@@ -61,10 +63,13 @@ export default function App() {
     }
   };
 
-  const handleOpenAction = (type) => {
+  const handleOpenAction = (type, card = null) => {
     setModalType(type);
     setActiveOrder(null);
     setAmount('');
+    setPinInput('');
+    setSecureCardData(null);
+    if (card) setSelectedCard(card);
     setShowModal(true);
   };
 
@@ -107,6 +112,22 @@ export default function App() {
         }
       } catch (e) {
         alert("Error al emitir tarjeta.");
+      }
+    } else if (modalType === 'card-details') {
+      try {
+        const res = await fetch(`${API_URL}/api/card-details`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telegramId, cardId: selectedCard.id, pin: pinInput })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setSecureCardData(data);
+        } else {
+          alert(data.error || 'PIN incorrecto');
+        }
+      } catch (e) {
+        alert("Error al verificar PIN de seguridad.");
       }
     } else {
       alert(`Acción "${modalType}" simulada correctamente.`);
@@ -260,8 +281,12 @@ export default function App() {
                     <span style={{ fontSize: '10px', background: 'rgba(16,185,129,0.2)', color: '#34d399', padding: '3px 10px', borderRadius: '10px', fontWeight: '700' }}>{card.status}</span>
                   </div>
                   <h3 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 10px 0', color: '#fff' }}>${Number(card.balance).toFixed(2)} USD</h3>
-                  <p style={{ fontSize: '12px', fontFamily: 'monospace', margin: '0 0 12px 0', color: '#cbd5e1', letterSpacing: '1px' }}>{card.number}</p>
-                  <button onClick={() => { setSelectedCard(card); handleOpenAction('deposit'); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', width: '100%' }}>Recargar Saldo</button>
+                  <p style={{ fontSize: '13px', fontFamily: 'monospace', margin: '0 0 12px 0', color: '#cbd5e1', letterSpacing: '1.5px' }}>{card.card_number || card.number}</p>
+                  
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => handleOpenAction('deposit', card)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flex: 1 }}>Recargar</button>
+                    <button onClick={() => handleOpenAction('card-details', card)} style={{ background: '#eab308', border: 'none', color: '#000', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', flex: 1 }}>Ver Datos 🔒</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -305,7 +330,7 @@ export default function App() {
             <div style={{ backgroundColor: '#0f172a', borderTop: '1px solid #1e293b', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '24px 20px 36px 20px', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0, color: '#ffffff', textTransform: 'capitalize' }}>
-                  {modalType === 'deposit' ? 'Recargar Saldo' : modalType === 'issue' ? 'Emitir Nueva Tarjeta' : modalType}
+                  {modalType === 'deposit' ? 'Recargar Saldo' : modalType === 'issue' ? 'Emitir Nueva Tarjeta' : modalType === 'card-details' ? 'Seguridad y PIN' : modalType}
                 </h3>
                 <button onClick={() => setShowModal(false)} style={{ background: '#1e293b', border: 'none', color: '#94a3b8', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer' }}>✕</button>
               </div>
@@ -358,6 +383,34 @@ export default function App() {
                   </div>
                   <button onClick={handleExecuteAction} style={{ width: '100%', backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>
                     Emitir Tarjeta Virtual
+                  </button>
+                </div>
+              )}
+
+              {modalType === 'card-details' && !secureCardData && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Introduce tu PIN de seguridad para revelar los datos confidenciales de la tarjeta (Por defecto: 1234):</p>
+                  <div>
+                    <input type="password" placeholder="PIN de 4 dígitos" maxLength="4" value={pinInput} onChange={(e) => setPinInput(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', textAlign: 'center', letterSpacing: '4px', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <button onClick={handleExecuteAction} style={{ width: '100%', backgroundColor: '#eab308', color: '#000', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>
+                    Ver Datos Seguros 🔓
+                  </button>
+                </div>
+              )}
+
+              {modalType === 'card-details' && secureCardData && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center' }}>
+                  <div style={{ backgroundColor: '#090b0e', border: '1px solid #1e293b', padding: '16px', borderRadius: '14px' }}>
+                    <p style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '4px', fontWeight: '600' }}>DATOS CONFIDENCIALES</p>
+                    <p style={{ fontSize: '15px', fontFamily: 'monospace', color: '#fff', margin: '8px 0', letterSpacing: '1.5px' }}>{secureCardData.cardNumber}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '10px', fontSize: '12px', color: '#cbd5e1' }}>
+                      <span>Exp: <b>{secureCardData.expiry}</b></span>
+                      <span>CVV: <b style={{ color: '#eab308' }}>{secureCardData.cvv}</b></span>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowModal(false)} style={{ width: '100%', backgroundColor: '#334155', color: '#fff', border: 'none', padding: '12px', borderRadius: '14px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+                    Cerrar
                   </button>
                 </div>
               )}
