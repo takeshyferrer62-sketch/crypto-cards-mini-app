@@ -14,23 +14,21 @@ export default function App() {
   });
 
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(''); // 'deposit', 'send', 'exchange', 'issue', 'card-details'
+  const [modalType, setModalType] = useState(''); // 'deposit', 'pay-web', 'exchange', 'issue', 'card-details'
   const [selectedCard, setSelectedCard] = useState(null);
   const [amount, setAmount] = useState('');
+  const [merchantName, setMerchantName] = useState('');
   const [selectedCrypto, setSelectedCrypto] = useState('USDT (TRC20)');
   const [copied, setCopied] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
   const [pinInput, setPinInput] = useState('');
   const [secureCardData, setSecureCardData] = useState(null);
-
-  // Estados para el conversor de divisas
   const [exchangeResult, setExchangeResult] = useState(null);
 
   useEffect(() => {
     let tId = '';
     let uName = '';
 
-    // Verificar si se está ejecutando dentro de Telegram WebApp real
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.expand();
@@ -41,11 +39,7 @@ export default function App() {
       }
     }
 
-    // Si por alguna razón entró desde un navegador web externo donde no hay sesión de Telegram,
-    // puedes opcionalmente pedirlo o asignarlo de forma única, o dejar un aviso limpio.
     if (!tId) {
-      // Intentamos recuperar del almacenamiento local del navegador si ya lo ingresó antes,
-      // o asignamos un identificador de modo navegador web para pruebas reales separadas.
       let savedId = localStorage.getItem('apex_web_user_id');
       if (!savedId) {
         savedId = 'WEB-' + Math.floor(100000 + Math.random() * 900000);
@@ -82,6 +76,7 @@ export default function App() {
     setModalType(type);
     setActiveOrder(null);
     setAmount('');
+    setMerchantName('');
     setPinInput('');
     setSecureCardData(null);
     setExchangeResult(null);
@@ -112,6 +107,30 @@ export default function App() {
         }
       } catch (e) {
         alert("Error al conectar con la pasarela.");
+      }
+    } else if (modalType === 'pay-web') {
+      if (!amount || amount <= 0 || !merchantName) {
+        alert("Ingresa el comercio y un monto válido");
+        return;
+      }
+      try {
+        const res = await fetch(`${API_URL}/api/request-charge`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            telegramId,
+            cardId: selectedCard.id,
+            merchant: merchantName,
+            amount,
+            crypto: selectedCrypto
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setActiveOrder(data);
+        }
+      } catch (e) {
+        alert("Error al solicitar el pago web.");
       }
     } else if (modalType === 'issue') {
       try {
@@ -161,7 +180,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        alert("¡Pago confirmado! Saldo acreditado.");
+        alert("¡Pago confirmado y autorizado en tu tarjeta!");
         setShowModal(false);
         setActiveOrder(null);
         fetchUserData(telegramId);
@@ -243,11 +262,10 @@ export default function App() {
         {/* VISTA DASHBOARD */}
         {activeTab === 'dashboard' && (
           <>
-            {/* Tarjetas Carrusel Dinámicas */}
             {userData.cards.length === 0 ? (
               <div style={{ backgroundColor: '#131720', border: '1px dashed #334155', borderRadius: '20px', padding: '24px', textAlign: 'center', marginBottom: '20px' }}>
                 <p style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>No tienes tarjetas activas</p>
-                <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '16px' }}>Emite tu primera tarjeta virtual Visa o Mastercard para empezar a operar.</p>
+                <p style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '16px' }}>Emite tu primera tarjeta virtual para autorizar pagos en internet.</p>
                 <button onClick={() => handleOpenAction('issue')} style={{ backgroundColor: '#eab308', color: '#000', border: 'none', padding: '10px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}>
                   Emitir Tarjeta Ahora 💳
                 </button>
@@ -266,7 +284,7 @@ export default function App() {
                     </div>
                     <div>
                       <p style={{ fontSize: '11px', fontFamily: 'monospace', color: '#cbd5e1', margin: '0 0 2px 0', letterSpacing: '1px' }}>{card.card_number || card.number}</p>
-                      <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>Exp: {card.expiry} • TITULAR</p>
+                      <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.5)', margin: 0 }}>Exp: {card.expiry} • VIRTUAL</p>
                     </div>
                   </div>
                 ))}
@@ -279,9 +297,9 @@ export default function App() {
                 <div style={{ width: '38px', height: '38px', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#eab308', fontSize: '16px' }}>⬇</div>
                 <span style={{ fontSize: '10px', fontWeight: '700', color: '#cbd5e1' }}>Depositar</span>
               </button>
-              <button onClick={() => handleOpenAction('send')} style={{ background: '#131720', border: '1px solid #1f2937', borderRadius: '16px', padding: '14px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', gap: '8px' }}>
-                <div style={{ width: '38px', height: '38px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontSize: '16px' }}>↗</div>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: '#cbd5e1' }}>Enviar</span>
+              <button onClick={() => userData.cards.length > 0 ? handleOpenAction('pay-web', userData.cards[0]) : alert('Emite una tarjeta primero')} style={{ background: '#131720', border: '1px solid #1f2937', borderRadius: '16px', padding: '14px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', gap: '8px' }}>
+                <div style={{ width: '38px', height: '38px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontSize: '16px' }}>🛒</div>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#cbd5e1' }}>Pagar Web</span>
               </button>
               <button onClick={() => handleOpenAction('exchange')} style={{ background: '#131720', border: '1px solid #1f2937', borderRadius: '16px', padding: '14px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', gap: '8px' }}>
                 <div style={{ width: '38px', height: '38px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontSize: '16px' }}>⇄</div>
@@ -295,10 +313,7 @@ export default function App() {
 
             {/* Transacciones Recientes */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Transacciones Recientes</h2>
-              </div>
-
+              <h2 style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', margin: '0 0 12px 0' }}>Transacciones Recientes</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {userData.history.length === 0 ? (
                   <p style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', padding: '20px 0' }}>No hay transacciones registradas.</p>
@@ -306,9 +321,7 @@ export default function App() {
                   userData.history.map(item => (
                     <div key={item.id} style={{ background: '#131720', border: '1px solid #1f2937', padding: '14px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '34px', height: '34px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', fontSize: '13px', fontWeight: 'bold' }}>
-                          {item.title.includes('Depósito') ? '₮' : '⚡'}
-                        </div>
+                        <div style={{ width: '34px', height: '34px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', fontSize: '13px', fontWeight: 'bold' }}>💳</div>
                         <div>
                           <p style={{ fontSize: '12px', fontWeight: '700', margin: '0 0 2px 0', color: '#f3f4f6' }}>{item.title}</p>
                           <p style={{ fontSize: '10px', color: '#9ca3af', margin: 0 }}>{item.description} • {item.date}</p>
@@ -344,8 +357,8 @@ export default function App() {
                     <h3 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 10px 0', color: '#fff' }}>${Number(card.balance).toFixed(2)} USD</h3>
                     <p style={{ fontSize: '13px', fontFamily: 'monospace', margin: '0 0 12px 0', color: '#cbd5e1', letterSpacing: '1.5px' }}>{card.card_number || card.number}</p>
                     
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleOpenAction('deposit', card)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flex: 1 }}>Recargar</button>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <button onClick={() => handleOpenAction('pay-web', card)} style={{ background: '#38bdf8', border: 'none', color: '#000', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', flex: 1 }}>🛒 Autorizar Pago Web</button>
                       <button onClick={() => handleOpenAction('card-details', card)} style={{ background: '#eab308', border: 'none', color: '#000', padding: '10px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '800', cursor: 'pointer', flex: 1 }}>Ver Datos 🔒</button>
                     </div>
                   </div>
@@ -360,7 +373,7 @@ export default function App() {
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: '36px', marginBottom: '10px' }}>🌐</div>
             <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '6px', color: '#fff' }}>Redes Cripto Disponibles</h3>
-            <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '20px' }}>Pasarelas de recarga instantánea sincronizadas con blockchain.</p>
+            <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '20px' }}>Pasarelas de recarga y autorización instantánea.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ background: '#131720', border: '1px solid #1f2937', padding: '14px', borderRadius: '14px', textAlign: 'left', fontSize: '12px', color: '#fff' }}>🟢 USDT (TRC20) - Rápido y sin comisiones</div>
               <div style={{ background: '#131720', border: '1px solid #1f2937', padding: '14px', borderRadius: '14px', textAlign: 'left', fontSize: '12px', color: '#fff' }}>🔵 TON (The Open Network) - Nativo Telegram</div>
@@ -373,16 +386,10 @@ export default function App() {
         {activeTab === 'settings' && (
           <div>
             <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#fff' }}>Configuración</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ background: '#131720', border: '1px solid #1f2937', borderRadius: '16px', padding: '16px' }}>
-                <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 4px 0', color: '#fff' }}>Cuenta Conectada</p>
-                <p style={{ fontSize: '12px', color: '#eab308', margin: '0 0 4px 0', fontWeight: '700' }}>{userName}</p>
-                <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, fontFamily: 'monospace' }}>Telegram ID: {telegramId}</p>
-              </div>
-              <div style={{ background: '#131720', border: '1px solid #1f2937', borderRadius: '16px', padding: '16px' }}>
-                <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 4px 0', color: '#fff' }}>Seguridad Biométrica</p>
-                <p style={{ fontSize: '11px', color: '#34d399', margin: 0 }}>Activada y sincronizada</p>
-              </div>
+            <div style={{ background: '#131720', border: '1px solid #1f2937', borderRadius: '16px', padding: '16px' }}>
+              <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 4px 0', color: '#fff' }}>Cuenta Conectada</p>
+              <p style={{ fontSize: '12px', color: '#eab308', margin: '0 0 4px 0', fontWeight: '700' }}>{userName}</p>
+              <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0, fontFamily: 'monospace' }}>Telegram ID: {telegramId}</p>
             </div>
           </div>
         )}
@@ -393,23 +400,48 @@ export default function App() {
             <div style={{ backgroundColor: '#0f172a', borderTop: '1px solid #1e293b', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '24px 20px 36px 20px', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0, color: '#ffffff', textTransform: 'capitalize' }}>
-                  {modalType === 'deposit' ? 'Recargar Saldo' : modalType === 'issue' ? 'Emitir Nueva Tarjeta' : modalType === 'exchange' ? 'Conversor de Divisas' : modalType === 'card-details' ? 'Seguridad y PIN' : modalType}
+                  {modalType === 'deposit' ? 'Recargar Saldo' : modalType === 'pay-web' ? 'Autorizar Pago Web' : modalType === 'issue' ? 'Emitir Nueva Tarjeta' : modalType === 'exchange' ? 'Conversor de Divisas' : 'Seguridad y PIN'}
                 </h3>
                 <button onClick={() => setShowModal(false)} style={{ background: '#1e293b', border: 'none', color: '#94a3b8', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer' }}>✕</button>
               </div>
 
-              {/* MODAL DEPOSITAR */}
+              {/* MODAL PAGAR WEB / AUTORIZAR CARGO */}
+              {modalType === 'pay-web' && !activeOrder && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ fontSize: '11px', color: '#38bdf8', margin: 0 }}>Tarjeta seleccionada: <b>{selectedCard?.type} ({selectedCard?.card_number || selectedCard?.number})</b></p>
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Comercio (Ej. Netflix, Spotify, Amazon)</label>
+                    <input type="text" placeholder="Nombre del comercio" value={merchantName} onChange={(e) => setMerchantName(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Monto a pagar (USD)</label>
+                    <input type="number" placeholder="Ej. 15.00" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <button onClick={handleExecuteAction} style={{ width: '100%', backgroundColor: '#38bdf8', color: '#000', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>
+                    Generar Autorización Cripto 🛒
+                  </button>
+                </div>
+              )}
+
+              {modalType === 'pay-web' && activeOrder && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center' }}>
+                  <div style={{ backgroundColor: '#090b0e', border: '1px solid #1e293b', padding: '14px', borderRadius: '14px' }}>
+                    <p style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '4px' }}>Orden ID: {activeOrder.orderId}</p>
+                    <p style={{ fontSize: '10px', color: '#94a3b8', margin: '0 0 8px 0' }}>Envía ${activeOrder.amount} para autorizar el pago en <b>{activeOrder.merchant}</b> a:</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#131720', padding: '10px', borderRadius: '10px', border: '1px solid #1f2937' }}>
+                      <span style={{ fontSize: '10px', fontFamily: 'monospace', color: '#38bdf8', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeOrder.address}</span>
+                      <button onClick={() => handleCopy(activeOrder.address)} style={{ background: '#1e293b', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer' }}>{copied ? '¡Copiado!' : 'Copiar'}</button>
+                    </div>
+                  </div>
+                  <button onClick={handleSimulatePayment} style={{ width: '100%', backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
+                    Simular Pago y Ejecutar Cargo ⚡
+                  </button>
+                </div>
+              )}
+
+              {/* DEMÁS MODALES (Depósito, Emitir, Exchange, PIN) */}
               {modalType === 'deposit' && !activeOrder && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Red Cripto</label>
-                    <select value={selectedCrypto} onChange={(e) => setSelectedCrypto(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
-                      <option>USDT (TRC20)</option>
-                      <option>USDT (TON)</option>
-                      <option>TON (Toncoin)</option>
-                      <option>BTC (Bitcoin)</option>
-                    </select>
-                  </div>
                   <div>
                     <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Monto (USD)</label>
                     <input type="number" placeholder="Ej. 100" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }} />
@@ -424,10 +456,9 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center' }}>
                   <div style={{ backgroundColor: '#090b0e', border: '1px solid #1e293b', padding: '14px', borderRadius: '14px' }}>
                     <p style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '4px' }}>Orden ID: {activeOrder.orderId}</p>
-                    <p style={{ fontSize: '10px', color: '#94a3b8', margin: '0 0 8px 0' }}>Envía ${activeOrder.amount} en {activeOrder.crypto} a:</p>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#131720', padding: '10px', borderRadius: '10px', border: '1px solid #1f2937' }}>
-                      <span style={{ fontSize: '10px', fontFamily: 'monospace', color: '#38bdf8', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeOrder.address}</span>
-                      <button onClick={() => handleCopy(activeOrder.address)} style={{ background: '#1e293b', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer' }}>{copied ? '¡Copiado!' : 'Copiar'}</button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#131720', padding: '10px', borderRadius: '10px', border: '1px solid #1f2937', marginTop: '8px' }}>
+                      <span style={{ fontSize: '10px', fontFamily: 'monospace', color: '#38bdf8' }}>{activeOrder.address}</span>
+                      <button onClick={() => handleCopy(activeOrder.address)} style={{ background: '#1e293b', border: 'none', color: '#fff', fontSize: '10px', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer' }}>Copiar</button>
                     </div>
                   </div>
                   <button onClick={handleSimulatePayment} style={{ width: '100%', backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
@@ -436,77 +467,53 @@ export default function App() {
                 </div>
               )}
 
-              {/* MODAL EMITIR TARJETA */}
               {modalType === 'issue' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Tipo de Tarjeta</label>
-                    <select value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
-                      <option value="Visa Standard">Visa Standard (Suscripciones/Web)</option>
-                      <option value="Mastercard Black">Mastercard Black (Global)</option>
-                    </select>
-                  </div>
+                  <select value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
+                    <option value="Visa Standard">Visa Standard (Suscripciones/Web)</option>
+                    <option value="Mastercard Black">Mastercard Black (Global)</option>
+                  </select>
                   <button onClick={handleExecuteAction} style={{ width: '100%', backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>
                     Emitir Tarjeta Virtual
                   </button>
                 </div>
               )}
 
-              {/* MODAL EXCHANGE / CONVERSOR DE DIVISAS */}
               {modalType === 'exchange' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Convertir de:</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input 
-                        type="number" 
-                        placeholder="0.00" 
-                        id="exchange-amount"
-                        style={{ flex: 2, backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} 
-                      />
-                      <select id="exchange-from" style={{ flex: 1, backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
-                        <option value="USDT">USDT</option>
-                        <option value="RUB">RUB</option>
-                        <option value="TON">TON</option>
-                        <option value="BTC">BTC</option>
-                        <option value="USD">USD</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>A moneda:</label>
-                    <select id="exchange-to" style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
-                      <option value="USD">USD (Dólar)</option>
-                      <option value="EUR">EUR (Euro)</option>
-                      <option value="RUB">RUB (Rublo)</option>
-                      <option value="CUP">CUP (Peso Cubano)</option>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input type="number" placeholder="0.00" id="exchange-amount" style={{ flex: 2, backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                    <select id="exchange-from" style={{ flex: 1, backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
                       <option value="USDT">USDT</option>
+                      <option value="RUB">RUB</option>
+                      <option value="TON">TON</option>
+                      <option value="BTC">BTC</option>
+                      <option value="USD">USD</option>
                     </select>
                   </div>
-
+                  <select id="exchange-to" style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '12px', outline: 'none' }}>
+                    <option value="USD">USD (Dólar)</option>
+                    <option value="EUR">EUR (Euro)</option>
+                    <option value="RUB">RUB (Rublo)</option>
+                    <option value="CUP">CUP (Peso Cubano)</option>
+                  </select>
                   {exchangeResult && (
                     <div style={{ backgroundColor: '#090b0e', border: '1px solid #10b981', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
-                      <p style={{ fontSize: '11px', color: '#94a3b8', margin: '0 0 2px 0' }}>Resultado estimado:</p>
-                      <p style={{ fontSize: '16px', fontWeight: '800', color: '#10b981', margin: 0 }}>
+                      <p style={{ fontSize: '15px', fontWeight: '800', color: '#10b981', margin: 0 }}>
                         {exchangeResult.inputAmount} {exchangeResult.from} = {exchangeResult.result} {exchangeResult.to}
                       </p>
                     </div>
                   )}
-
                   <button onClick={handleCalculateExchange} style={{ width: '100%', backgroundColor: '#10b981', color: '#fff', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>
                     Calcular Tasa de Cambio ⇄
                   </button>
                 </div>
               )}
 
-              {/* MODAL DATOS SEGUROS DE TARJETA (PIN) */}
               {modalType === 'card-details' && !secureCardData && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Introduce tu PIN de seguridad para revelar los datos confidenciales de la tarjeta (Por defecto: 1234):</p>
-                  <div>
-                    <input type="password" placeholder="PIN de 4 dígitos" maxLength="4" value={pinInput} onChange={(e) => setPinInput(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', textAlign: 'center', letterSpacing: '4px', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Introduce tu PIN de seguridad (Por defecto: 1234):</p>
+                  <input type="password" placeholder="PIN de 4 dígitos" maxLength="4" value={pinInput} onChange={(e) => setPinInput(e.target.value)} style={{ width: '100%', backgroundColor: '#090b0e', border: '1px solid #1e293b', color: '#fff', padding: '12px', borderRadius: '12px', fontSize: '14px', textAlign: 'center', letterSpacing: '4px', outline: 'none', boxSizing: 'border-box' }} />
                   <button onClick={handleExecuteAction} style={{ width: '100%', backgroundColor: '#eab308', color: '#000', border: 'none', padding: '14px', borderRadius: '14px', fontSize: '13px', fontWeight: '800', cursor: 'pointer' }}>
                     Ver Datos Seguros 🔓
                   </button>
@@ -516,7 +523,6 @@ export default function App() {
               {modalType === 'card-details' && secureCardData && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'center' }}>
                   <div style={{ backgroundColor: '#090b0e', border: '1px solid #1e293b', padding: '16px', borderRadius: '14px' }}>
-                    <p style={{ fontSize: '11px', color: '#38bdf8', marginBottom: '4px', fontWeight: '600' }}>DATOS CONFIDENCIALES</p>
                     <p style={{ fontSize: '15px', fontFamily: 'monospace', color: '#fff', margin: '8px 0', letterSpacing: '1.5px' }}>{secureCardData.cardNumber}</p>
                     <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '10px', fontSize: '12px', color: '#cbd5e1' }}>
                       <span>Exp: <b>{secureCardData.expiry}</b></span>
